@@ -118,13 +118,17 @@ def recognize_element(image, description):
         # 构建请求数据
         data = {
             "model": "qwen3-vl:8b",
-            "prompt": f"请在以下图像中识别'{description}'元素，返回其中心点坐标。"\
+            "prompt": f"请快速识别以下图像中的'{description}'元素，直接返回其中心点坐标，不要进行深度思考。"\
                       "坐标格式应为 (x, y)，其中 x 是水平坐标，y 是垂直坐标，"\
-                      "坐标原点在图像的左上角。"\
-                      "如果未找到该元素，请返回 'None'。"\
-                      "请详细描述你看到的内容，包括元素的位置、形状、颜色等信息。",
+                      "坐标原点在图像的左上角，范围应在 0 到图像宽度/高度之间。"\
+                      "如果未找到该元素，请直接返回 'None'。"\
+                      "请只返回坐标或 'None'，不要添加任何额外的描述或解释。",
             "images": [image_base64],
-            "stream": False
+            "stream": False,
+            "options": {
+                "temperature": 0.1,  # 降低温度，减少随机性
+                "max_tokens": 50     # 限制输出长度
+            }
         }
         
         # 发送请求到 ollama API
@@ -191,9 +195,18 @@ def find_and_click_element(description, window):
         element_pos = recognize_element(screenshot, description)
         
         if element_pos:
+            # 检查坐标是否在合理范围内
+            x, y = element_pos
+            if x < 0 or y < 0 or x > window["width"] or y > window["height"]:
+                print(f"⚠️ 坐标超出范围：({x}, {y})，窗口大小：{window['width']}x{window['height']}")
+                # 调整坐标到合理范围
+                x = max(0, min(x, window["width"] - 1))
+                y = max(0, min(y, window["height"] - 1))
+                print(f"调整后的坐标：({x}, {y})")
+            
             # 计算实际屏幕坐标
-            actual_x = window["left"] + element_pos[0]
-            actual_y = window["top"] + element_pos[1]
+            actual_x = window["left"] + x
+            actual_y = window["top"] + y
             
             # 修复坐标
             fixed_x, fixed_y = fix_coordinates(actual_x, actual_y)

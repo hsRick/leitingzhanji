@@ -1,6 +1,8 @@
 import pyautogui
 import time
 import sys
+import io
+from PIL import Image
 
 # 检测是否为 Retina 显示器
 def is_retina():
@@ -12,7 +14,7 @@ def is_retina():
 
 # 获取微信小程序窗口位置
 def get_wechat_miniprogram_window():
-    """获取微信小程序窗口的位置和大小"""
+    """获取雷霆战机：集结窗口的位置和大小"""
     try:
         # macOS 上使用 Quartz 获取窗口信息
         from Quartz import (
@@ -26,64 +28,28 @@ def get_wechat_miniprogram_window():
             kCGWindowListOptionOnScreenOnly, kCGNullWindowID
         )
 
-        # 收集所有微信窗口
-        wechat_windows = []
+        # 直接查找雷霆战机：集结窗口
         for window in window_list:
-            owner_name = window.get("kCGWindowOwnerName", "")
             window_title = window.get("kCGWindowName", "")
             
-            # 调试：打印所有窗口信息
-            if "微信" in owner_name or "WeChat" in owner_name or "雷霆战机" in window_title:
+            if "雷霆战机：集结" in window_title:
                 bounds = window.get("kCGWindowBounds", {})
                 left = bounds.get("X", 0)
                 top = bounds.get("Y", 0)
                 width = bounds.get("Width", 0)
                 height = bounds.get("Height", 0)
-                print(f"  窗口：{window_title} (所有者: {owner_name}) - 位置: {left},{top} 大小: {width}x{height}")
                 
                 # 只考虑在屏幕内的窗口
                 if left >= 0 and top >= 0 and width > 200 and height > 200:
-                    wechat_windows.append({
-                        "title": window_title,
+                    print(f"找到雷霆战机：集结窗口 - 位置: {left},{top} 大小: {width}x{height}")
+                    return {
                         "left": int(left),
                         "top": int(top),
                         "width": int(width),
-                        "height": int(height),
-                        "area": int(width * height)
-                    })
+                        "height": int(height)
+                    }
         
-        # 优先选择雷霆战机：集结窗口
-        thunder_fighter_window = None
-        for window in wechat_windows:
-            if "雷霆战机：集结" in window["title"]:
-                thunder_fighter_window = window
-                break
-        
-        # 如果找到雷霆战机窗口，使用它
-        if thunder_fighter_window:
-            print(f"选择微信窗口：{thunder_fighter_window['title']} (面积: {thunder_fighter_window['area']})")
-            
-            return {
-                "left": thunder_fighter_window["left"],
-                "top": thunder_fighter_window["top"],
-                "width": thunder_fighter_window["width"],
-                "height": thunder_fighter_window["height"]
-            }
-        
-        # 否则按面积排序选择最大的窗口
-        elif wechat_windows:
-            # 按面积降序排序
-            wechat_windows.sort(key=lambda w: w["area"], reverse=True)
-            largest_window = wechat_windows[0]
-            print(f"选择微信窗口：{largest_window['title']} (面积: {largest_window['area']})")
-            
-            return {
-                "left": largest_window["left"],
-                "top": largest_window["top"],
-                "width": largest_window["width"],
-                "height": largest_window["height"]
-            }
-        
+        print("未找到雷霆战机：集结窗口")
         return None
     except Exception as e:
         print(f"获取窗口失败：{e}")
@@ -93,7 +59,7 @@ def get_wechat_miniprogram_window():
 RETINA = is_retina()
 
 # ====================== 【你只需要改这里】 ======================
-# 循环次数：0 = 无限循环
+# 循环次数（必须 > 0）
 LOOP_TIMES = 2
 
 # 每一步等待时间（秒）
@@ -102,13 +68,15 @@ AFTER_WAIT = 1
 # 动作列表：
 # 支持：
 # ["find", "图片路径.png"]   → 自动找图并点击
+# ["find_text", "文本"]       → 根据文本查找并点击（使用 macOS OCR）
 # ["key", "按键"]            → 按键盘
 # ["wait", 秒数]             → 等待
 # ["click", x, y]            → 手动点击坐标
 ACTIONS = [
     ["find", "guanggao.png"],   # 自动找屏幕上的 guanggao.png 并点击
     ["wait", 0.5],
-    ["find", "closed.png"],   # 自动找屏幕上的 closed.png 并点击
+    ["find_text", "关闭"],       # 根据文本"关闭"查找并点击
+    # ["find", "closed.png"],   # 自动找屏幕上的 closed.png 并点击
     # ["key", "enter"],
     # ["wait", 0.5],
 ]
@@ -137,6 +105,163 @@ def fix_coordinates(x, y):
     fixed_y = max(0, min(fixed_y, screen_height - 1))
     
     return fixed_x, fixed_y
+
+
+def find_text_ocr(text, window=None):
+    """
+    使用 macOS Vision 框架在屏幕或窗口中查找文本并返回中心点坐标
+    
+    参数:
+        text: 要查找的文本
+        window: 窗口信息字典 (可选)，包含 left, top, width, height
+    
+    返回:
+        (x, y) 坐标或 None
+    """
+    try:
+        from Quartz import (
+            CGWindowListCreateImage,
+            CGRectNull,
+            kCGWindowImageBoundsIgnoreFraming,
+            kCGWindowImageDefault,
+        )
+        from Vision import VNRecognizeTextRequest, VNImageRequestHandler, VNImageOptionProperties
+        import objc
+        
+        # 截取屏幕或窗口
+        if window:
+            # 截取指定窗口区域
+            screenshot = pyautogui.screenshot(region=(
+                window["left"],
+                window["top"],
+                window["width"],
+                window["height"]
+            ))
+        else:
+            # 截取全屏
+            screenshot = pyautogui.screenshot()
+        
+        # 转换为 PNG 数据
+        img_buffer = io.BytesIO()
+        screenshot.save(img_buffer, format='PNG')
+        img_buffer.seek(0)
+        
+        # 创建 Vision 请求
+        recognized_texts = []
+        bounding_boxes = []
+        
+        def handle_request(request, error):
+            if error:
+                print(f"OCR 错误: {error}")
+                return
+            results = request.results()
+            if results:
+                for result in results:
+                    recognized_texts.append(result.topCandidates_(1)[0].string())
+                    bounding_boxes.append(result.boundingBox())
+        
+        request = VNRecognizeTextRequest.alloc().initWithCompletionHandler_(handle_request)
+        request.setRecognitionLevel_(1)  # 1 = accurate, 0 = fast
+        
+        # 创建图像请求处理器
+        handler = VNImageRequestHandler.alloc().initWithData_options_(
+            img_buffer.read(),
+            None
+        )
+        
+        # 执行请求
+        success, error = handler.performRequests_error_([request], None)
+        
+        if not success:
+            print(f"OCR 执行失败: {error}")
+            return None
+        
+        # 查找匹配的文本
+        for i, recognized_text in enumerate(recognized_texts):
+            if text in recognized_text:
+                print(f"找到文本 '{text}' 在: '{recognized_text}'")
+                # 获取边界框并转换为屏幕坐标
+                box = bounding_boxes[i]
+                # Vision 框架返回的是归一化坐标 (0-1)，原点在左下角
+                img_width, img_height = screenshot.size
+                
+                # 转换坐标：左下角 → 左上角
+                center_x_normalized = box.origin.x + box.size.width / 2
+                center_y_normalized = 1 - (box.origin.y + box.size.height / 2)
+                
+                # 转换为像素坐标
+                if window:
+                    center_x = window["left"] + int(center_x_normalized * window["width"])
+                    center_y = window["top"] + int(center_y_normalized * window["height"])
+                else:
+                    center_x = int(center_x_normalized * img_width)
+                    center_y = int(center_y_normalized * img_height)
+                
+                return (center_x, center_y)
+        
+        print(f"未找到文本 '{text}'")
+        return None
+        
+    except ImportError as e:
+        print(f"需要 macOS Vision 框架: {e}")
+        return None
+    except Exception as e:
+        print(f"OCR 查找失败: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return None
+
+
+def find_text_and_click(text):
+    """
+    根据文本查找并点击
+    
+    参数:
+        text: 要查找的文本
+        
+    返回:
+        是否成功
+    """
+    try:
+        print(f"正在查找文本：{text}")
+        
+        # 获取微信小程序窗口位置
+        print("查找微信小程序窗口...")
+        window = get_wechat_miniprogram_window()
+        if window:
+            print(f"限制在微信小程序窗口内查找：{window}")
+        else:
+            print("未找到微信小程序窗口，将在全屏查找")
+        
+        # 尝试多次查找
+        for i in range(3):
+            pos = find_text_ocr(text, window)
+            if pos:
+                x, y = pos
+                print(f"找到文本位置：{x}, {y}")
+                
+                # 修复坐标
+                fixed_x, fixed_y = fix_coordinates(x, y)
+                print(f"修复后的坐标：{fixed_x}, {fixed_y}")
+                
+                # 移动到位置并点击
+                pyautogui.moveTo(fixed_x, fixed_y, duration=0.5)
+                time.sleep(0.5)
+                pyautogui.click()
+                print(f"✅ 找到并点击：{fixed_x}, {fixed_y}")
+                return True
+            else:
+                print(f"第 {i+1} 次未找到，重试...")
+                time.sleep(0.5)
+        
+        print("❌ 未找到目标文本")
+        return False
+        
+    except Exception as e:
+        print(f"错误：{e}")
+        import traceback
+        print(traceback.format_exc())
+        return False
 
 
 def find_and_click(image_path):
@@ -230,6 +355,9 @@ def run_action(act):
     if t == "find":
         # 执行找图动作并返回结果
         return find_and_click(act[1])
+    elif t == "find_text":
+        # 执行找文本动作并返回结果
+        return find_text_and_click(act[1])
     elif t == "key":
         pyautogui.press(act[1])
         return True
@@ -244,8 +372,11 @@ def run_action(act):
 
 
 def run_loop():
-    count = 1
     print("🚀 自动按键精灵已启动（Ctrl+C 停止）")
+    
+    # 确保循环次数有效，防止无限循环
+    max_loops = max(1, LOOP_TIMES)
+    print(f"将执行 {max_loops} 轮循环")
     
     # 首先全屏查找 icon 并点击
     print("\n===== 启动阶段 =====")
@@ -285,10 +416,8 @@ def run_loop():
     if not icon_found:
         print("❌ 未找到 icon，继续执行后续操作")
     
-    # 执行主循环
-    while True:
-        if LOOP_TIMES > 0 and count > LOOP_TIMES:
-            break
+    # 执行主循环（使用 for 循环替代 while，确保不会无限循环）
+    for count in range(1, max_loops + 1):
         print(f"\n===== 第 {count} 轮 =====")
         
         # 执行动作，检查每个动作的返回值
@@ -303,9 +432,7 @@ def run_loop():
                 action_success = False
                 break
         
-        # 只有所有动作都成功执行，才增加轮次计数
-        if action_success:
-            count += 1
+
 
 
 if __name__ == "__main__":
