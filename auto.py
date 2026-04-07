@@ -28,11 +28,23 @@ def get_wechat_miniprogram_window():
             kCGWindowListOptionOnScreenOnly, kCGNullWindowID
         )
 
+        print("\n=== 调试：所有微信相关窗口 ===")
         # 直接查找雷霆战机：集结窗口
         for window in window_list:
+            owner_name = window.get("kCGWindowOwnerName", "")
             window_title = window.get("kCGWindowName", "")
             
-            if "雷霆战机：集结" in window_title:
+            # 打印所有微信相关窗口（调试用）
+            if "微信" in owner_name or "WeChat" in owner_name or "雷霆" in window_title:
+                bounds = window.get("kCGWindowBounds", {})
+                left = bounds.get("X", 0)
+                top = bounds.get("Y", 0)
+                width = bounds.get("Width", 0)
+                height = bounds.get("Height", 0)
+                print(f"窗口标题: '{window_title}' | 所有者: '{owner_name}' | 位置: {left},{top} | 大小: {width}x{height}")
+            
+            # 尝试匹配雷霆战机窗口（多种变体）
+            if "雷霆战机" in window_title or "雷霆" in window_title:
                 bounds = window.get("kCGWindowBounds", {})
                 left = bounds.get("X", 0)
                 top = bounds.get("Y", 0)
@@ -41,7 +53,7 @@ def get_wechat_miniprogram_window():
                 
                 # 只考虑在屏幕内的窗口
                 if left >= 0 and top >= 0 and width > 200 and height > 200:
-                    print(f"找到雷霆战机：集结窗口 - 位置: {left},{top} 大小: {width}x{height}")
+                    print(f"\n✅ 找到雷霆战机窗口 - 位置: {left},{top} 大小: {width}x{height}")
                     return {
                         "left": int(left),
                         "top": int(top),
@@ -49,10 +61,12 @@ def get_wechat_miniprogram_window():
                         "height": int(height)
                     }
         
-        print("未找到雷霆战机：集结窗口")
+        print("\n未找到雷霆战机：集结窗口")
         return None
     except Exception as e:
         print(f"获取窗口失败：{e}")
+        import traceback
+        print(traceback.format_exc())
         return None
 
 # 初始化时检测 Retina 显示器
@@ -61,6 +75,9 @@ RETINA = is_retina()
 # ====================== 【你只需要改这里】 ======================
 # 循环次数（必须 > 0）
 LOOP_TIMES = 2
+
+# 是否跳过 icon 查找阶段（True = 跳过，直接开始执行动作）
+SKIP_ICON_FIND = False
 
 # 每一步等待时间（秒）
 AFTER_WAIT = 1
@@ -74,11 +91,11 @@ AFTER_WAIT = 1
 # ["click", x, y]            → 手动点击坐标
 ACTIONS = [
     ["find", "guanggao.png"],   # 自动找屏幕上的 guanggao.png 并点击
+    ["wait", 31],
+    ["find", "closed.png"],   # 自动找屏幕上的 closed.png 并点击
+    # ["find_text", "关闭"],       # 根据文本"关闭"查找并点击（需要安装 pyobjc）
+    ["find", "get.png"],   # 自动找屏幕上的 get.png 并点击
     ["wait", 0.5],
-    ["find_text", "关闭"],       # 根据文本"关闭"查找并点击
-    # ["find", "closed.png"],   # 自动找屏幕上的 closed.png 并点击
-    # ["key", "enter"],
-    # ["wait", 0.5],
 ]
 
 # 找图精度（0.8~0.99，越接近1越严格）
@@ -86,6 +103,13 @@ CONFIDENCE = 0.85
 
 
 # ====================== 以下不用动 ======================
+
+import os
+print(f"当前工作目录: {os.getcwd()}")
+print(f"当前目录文件列表: {os.listdir('.')}")
+print(f"icon.png 是否存在: {os.path.exists('icon.png')}")
+if os.path.exists('icon.png'):
+    print(f"icon.png 完整路径: {os.path.abspath('icon.png')}")
 
 def fix_coordinates(x, y):
     """修复坐标，处理 Retina 显示器问题"""
@@ -119,6 +143,7 @@ def find_text_ocr(text, window=None):
         (x, y) 坐标或 None
     """
     try:
+        # 检查必要的模块是否可用
         from Quartz import (
             CGWindowListCreateImage,
             CGRectNull,
@@ -127,7 +152,13 @@ def find_text_ocr(text, window=None):
         )
         from Vision import VNRecognizeTextRequest, VNImageRequestHandler, VNImageOptionProperties
         import objc
-        
+    except ImportError:
+        print(f"❌ OCR 功能不可用：缺少必要的模块")
+        print(f"💡 提示：如需使用 OCR 文本查找功能，请运行: pip install pyobjc")
+        print(f"💡 或者使用图片查找功能 (['find', 'xxx.png'])")
+        return None
+    
+    try:
         # 截取屏幕或窗口
         if window:
             # 截取指定窗口区域
@@ -202,9 +233,6 @@ def find_text_ocr(text, window=None):
         print(f"未找到文本 '{text}'")
         return None
         
-    except ImportError as e:
-        print(f"需要 macOS Vision 框架: {e}")
-        return None
     except Exception as e:
         print(f"OCR 查找失败: {e}")
         import traceback
@@ -267,86 +295,77 @@ def find_text_and_click(text):
 def find_and_click(image_path):
     try:
         print(f"正在寻找：{image_path}")
+        
+        # 检查图片文件是否存在
+        if not os.path.exists(image_path):
+            print(f"❌ 图片文件不存在: {os.path.abspath(image_path)}")
+            return False
 
         # 获取微信小程序窗口位置
         print("查找微信小程序窗口...")
         window = get_wechat_miniprogram_window()
         if window:
-            print(f"限制在微信小程序窗口内查找：{window}")
+            print(f"窗口信息：{window}")
         else:
-            print("未找到微信小程序窗口，将在全屏查找")
-
-        # 尝试多次找图，提高成功率
-        for i in range(3):
+            print("未找到微信小程序窗口")
+        
+        # 尝试多次找图，每次降低置信度
+        confidence_levels = [CONFIDENCE, CONFIDENCE - 0.1, CONFIDENCE - 0.2, CONFIDENCE - 0.3]
+        
+        for attempt, conf in enumerate(confidence_levels):
+            if conf < 0.5:
+                conf = 0.5
+                
+            print(f"第 {attempt+1} 次尝试，置信度: {conf}")
+            
+            # 先尝试全屏查找
+            print("  尝试全屏查找...")
+            pos = None
             try:
-                # 如果在窗口内查找，使用 region 参数
-                if window:
-                    pos = pyautogui.locateOnScreen(
-                        image_path,
-                        confidence=CONFIDENCE,
-                        region=(
-                            window["left"],
-                            window["top"],
-                            window["width"],
-                            window["height"],
-                        ),
-                    )
-                else:
-                    pos = pyautogui.locateOnScreen(image_path, confidence=CONFIDENCE)
-
-                if pos:
-                    x, y = pyautogui.center(pos)
-                    print(f"找到图片位置：{x}, {y}")
-                    
-                    # 修复坐标
-                    fixed_x, fixed_y = fix_coordinates(x, y)
-                    print(f"修复后的坐标：{fixed_x}, {fixed_y}")
-
-                    # 移动到位置并点击
-                    pyautogui.moveTo(fixed_x, fixed_y, duration=0.5)
-                    time.sleep(0.5)
-                    pyautogui.click()
-                    print(f"✅ 找到并点击：{fixed_x}, {fixed_y}")
-                    return True
+                pos = pyautogui.locateOnScreen(image_path, confidence=conf)
             except pyautogui.ImageNotFoundException:
-                # 尝试降低置信度重试
-                if i < 2:
-                    try:
-                        # 如果在窗口内查找，使用 region 参数
-                        if window:
-                            pos = pyautogui.locateOnScreen(
-                                image_path,
-                                confidence=CONFIDENCE - 0.05,
-                                region=(
-                                    window["left"],
-                                    window["top"],
-                                    window["width"],
-                                    window["height"],
-                                ),
-                            )
-                        else:
-                            pos = pyautogui.locateOnScreen(image_path, confidence=CONFIDENCE - 0.05)
-
-                        if pos:
-                            x, y = pyautogui.center(pos)
-                            # 修复坐标
-                            fixed_x, fixed_y = fix_coordinates(x, y)
-                            # 移动到位置并点击
-                            pyautogui.moveTo(fixed_x, fixed_y, duration=0.5)
-                            time.sleep(0.5)
-                            pyautogui.click()
-                            print(f"✅ 找到并点击：{fixed_x}, {fixed_y}")
-                            return True
-                    except:
-                        pass
+                print("  全屏未找到")
             except Exception as e:
-                print(f"找图失败：{e}")
-            finally:
+                print(f"  全屏查找出错: {e}")
+            
+            if pos:
+                x, y = pyautogui.center(pos)
+                print(f"  找到图片位置：{x}, {y}")
+                
+                # 先修复坐标（处理 Retina 显示器）
+                fixed_x, fixed_y = fix_coordinates(x, y)
+                print(f"  修复后的坐标：{fixed_x}, {fixed_y}")
+                
+                # 如果找到了窗口，验证修复后的坐标是否在窗口内
+                if window:
+                    in_window = (
+                        fixed_x >= window["left"] and 
+                        fixed_x <= window["left"] + window["width"] and 
+                        fixed_y >= window["top"] and 
+                        fixed_y <= window["top"] + window["height"]
+                    )
+                    print(f"  坐标是否在窗口内: {in_window}")
+                    
+                    if not in_window:
+                        print(f"  ⚠️  坐标不在窗口内，继续查找...")
+                        time.sleep(0.5)
+                        continue
+
+                # 移动到位置并点击
+                pyautogui.moveTo(fixed_x, fixed_y, duration=0.5)
                 time.sleep(0.5)
+                pyautogui.click()
+                print(f"✅ 找到并点击：{fixed_x}, {fixed_y}")
+                return True
+            
+            time.sleep(0.5)
+        
         print("❌ 未找到目标元素")
         return False
     except Exception as e:
         print(f"错误：{e}")
+        import traceback
+        print(traceback.format_exc())
         return False
 
 
@@ -378,16 +397,32 @@ def run_loop():
     max_loops = max(1, LOOP_TIMES)
     print(f"将执行 {max_loops} 轮循环")
     
-    # 首先全屏查找 icon 并点击
-    print("\n===== 启动阶段 =====")
-    print("正在全屏查找 icon...")
-    
-    # 尝试多次查找 icon
-    icon_found = False
-    for i in range(3):
-        try:
+    # 首先全屏查找 icon 并点击（可选）
+    if not SKIP_ICON_FIND:
+        print("\n===== 启动阶段 =====")
+        print("正在全屏查找 icon...")
+        
+        # 尝试多次查找 icon
+        icon_found = False
+        print(f"使用的置信度: {CONFIDENCE}")
+        
+        for i in range(3):
+            # 尝试不同的置信度
+            current_confidence = CONFIDENCE - (i * 0.1)
+            if current_confidence < 0.5:
+                current_confidence = 0.5
+            
+            print(f"第 {i+1} 次查找 icon，置信度: {current_confidence}")
+            
             # 全屏查找 icon
-            pos = pyautogui.locateOnScreen("icon.png", confidence=CONFIDENCE)
+            pos = None
+            try:
+                pos = pyautogui.locateOnScreen("icon.png", confidence=current_confidence)
+            except pyautogui.ImageNotFoundException:
+                print(f"  未找到 icon")
+            except Exception as e:
+                print(f"查找 icon 出错：{e}")
+            
             if pos:
                 x, y = pyautogui.center(pos)
                 print(f"找到 icon 位置：{x}, {y}")
@@ -404,17 +439,18 @@ def run_loop():
                 icon_found = True
                 # 等待小程序启动（增加等待时间）
                 print("等待小程序启动...")
-                time.sleep(5)
+                time.sleep(1)
+                # 启动之后 进入商城
+                find_and_click("商城.png")
                 break
             else:
                 print(f"第 {i+1} 次未找到 icon，重试...")
                 time.sleep(1)
-        except Exception as e:
-            print(f"查找 icon 失败：{e}")
-            time.sleep(1)
-    
-    if not icon_found:
-        print("❌ 未找到 icon，继续执行后续操作")
+        
+        if not icon_found:
+            print("❌ 未找到 icon，继续执行后续操作")
+    else:
+        print("\n===== 已跳过 icon 查找阶段 =====")
     
     # 执行主循环（使用 for 循环替代 while，确保不会无限循环）
     for count in range(1, max_loops + 1):
@@ -431,13 +467,15 @@ def run_loop():
                 print("❌ 动作执行失败，停止当前轮次")
                 action_success = False
                 break
-        
+    
+    # 主循环执行完毕后 执行返回动作
+    find_and_click("return.png")
 
 
 
 if __name__ == "__main__":
     try:
-        time.sleep(2)
+        time.sleep(1)
         run_loop()
     except KeyboardInterrupt:
         print("\n🛑 已停止")
