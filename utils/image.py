@@ -81,11 +81,11 @@ def find_and_click(image_path):
                         continue
                 
                 # 点击
-                print(f"  用修复后的坐标点击: {fixed_x}, {fixed_y}")
+                print(f"  用修复后的坐标点击 {image_path}: {fixed_x}, {fixed_y}")
                 pyautogui.moveTo(fixed_x, fixed_y, duration=0.5)
                 time.sleep(0.5)
                 pyautogui.click()
-                print(f"✅ 点击完成：{fixed_x}, {fixed_y}")
+                print(f"✅ 点击完成 {image_path}：{fixed_x}, {fixed_y}")
                 return True
             
         print("❌ 未找到目标元素")
