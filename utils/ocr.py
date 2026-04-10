@@ -37,18 +37,14 @@ def find_text_ocr(text, window=None):
         return None
     
     try:
-        # 截取屏幕或窗口
-        if window:
-            # 截取指定窗口区域
-            screenshot = pyautogui.screenshot(region=(
-                window["left"],
-                window["top"],
-                window["width"],
-                window["height"]
-            ))
-        else:
-            # 截取全屏
-            screenshot = pyautogui.screenshot()
+        # 优先全屏截图（更可靠）
+        screenshot = pyautogui.screenshot()
+        screenshot_region = None  # 标记是全屏截图
+        
+        # 保存截图用于调试
+        screenshot.save('debug_ocr_screenshot.png')
+        print(f"📸 已保存 OCR 调试截图: debug_ocr_screenshot.png")
+        print(f"📸 截图尺寸: {screenshot.size}")
         
         # 转换为 PNG 数据
         img_buffer = io.BytesIO()
@@ -70,7 +66,7 @@ def find_text_ocr(text, window=None):
                     bounding_boxes.append(result.boundingBox())
         
         request = VNRecognizeTextRequest.alloc().initWithCompletionHandler_(handle_request)
-        request.setRecognitionLevel_(1)  # 1 = accurate, 0 = fast
+        request.setRecognitionLevel_(0)  # 0 = fast, 1 = accurate (快速模式可能更适合中文)
         
         # 创建图像请求处理器
         handler = VNImageRequestHandler.alloc().initWithData_options_(
@@ -85,6 +81,9 @@ def find_text_ocr(text, window=None):
             print(f"OCR 执行失败: {error}")
             return None
         
+        # 打印所有识别到的文本（调试用）
+        print(f"🔍 OCR 识别到的所有文本: {recognized_texts}")
+        
         # 查找匹配的文本
         for i, recognized_text in enumerate(recognized_texts):
             if text in recognized_text:
@@ -98,13 +97,9 @@ def find_text_ocr(text, window=None):
                 center_x_normalized = box.origin.x + box.size.width / 2
                 center_y_normalized = 1 - (box.origin.y + box.size.height / 2)
                 
-                # 转换为像素坐标
-                if window:
-                    center_x = window["left"] + int(center_x_normalized * window["width"])
-                    center_y = window["top"] + int(center_y_normalized * window["height"])
-                else:
-                    center_x = int(center_x_normalized * img_width)
-                    center_y = int(center_y_normalized * img_height)
+                # 转换为像素坐标（总是全屏截图）
+                center_x = int(center_x_normalized * img_width)
+                center_y = int(center_y_normalized * img_height)
                 
                 return (center_x, center_y)
         

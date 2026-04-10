@@ -6,6 +6,10 @@
 """
 
 import pyautogui
+from utils.window import is_retina
+
+# 检测是否为 Retina 显示器
+RETINA = is_retina()
 
 def fix_coordinates(x, y):
     """
@@ -23,9 +27,12 @@ def fix_coordinates(x, y):
     fixed_x = x
     fixed_y = y
     
-    # 如果坐标超出屏幕范围，可能是 Retina 显示器的缩放问题
-    if x > screen_width or y > screen_height:
-        # 将坐标除以 2
+    # 如果是 Retina 显示器，直接除以 2
+    if RETINA:
+        fixed_x = int(x / 2)
+        fixed_y = int(y / 2)
+    # 否则只在坐标超出屏幕范围时除以 2（兼容非 Retina）
+    elif x > screen_width or y > screen_height:
         fixed_x = int(x / 2)
         fixed_y = int(y / 2)
     

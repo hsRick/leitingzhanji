@@ -6,9 +6,13 @@
 """
 
 import os
+import time
 import pyautogui
 from utils.coordinates import fix_coordinates, is_point_in_window
-from utils.window import get_thunder_fighter_window
+from utils.window import get_thunder_fighter_window, is_retina
+
+# 检测是否为 Retina 显示器
+RETINA = is_retina()
 
 def find_and_click(image_path):
     """
@@ -56,23 +60,32 @@ def find_and_click(image_path):
                 x, y = pyautogui.center(pos)
                 print(f"  找到图片位置：{x}, {y}")
                 
-                # 先修复坐标（处理 Retina 显示器）
+                # 修复坐标（处理 Retina 显示器）
                 fixed_x, fixed_y = fix_coordinates(x, y)
                 print(f"  修复后的坐标：{fixed_x}, {fixed_y}")
                 
-                # 如果找到了窗口，验证修复后的坐标是否在窗口内
+                # 如果找到了窗口，检查坐标是否在窗口内
                 if window:
-                    in_window = is_point_in_window((fixed_x, fixed_y), window)
+                    print(f"  窗口范围: ({window['left']},{window['top']}) - ({window['left'] + window['width']},{window['top'] + window['height']})")
+                    in_window = (
+                        fixed_x >= window["left"] and 
+                        fixed_x <= window["left"] + window["width"] and 
+                        fixed_y >= window["top"] and 
+                        fixed_y <= window["top"] + window["height"]
+                    )
                     print(f"  坐标是否在窗口内: {in_window}")
                     
+                    # 如果坐标不在窗口内，继续查找
                     if not in_window:
-                        print(f"  ⚠️  坐标不在窗口内，继续查找...")
+                        print("  ⚠️  坐标不在窗口内，继续查找...")
                         continue
-
-                # 移动到位置并点击
+                
+                # 点击
+                print(f"  用修复后的坐标点击: {fixed_x}, {fixed_y}")
                 pyautogui.moveTo(fixed_x, fixed_y, duration=0.5)
+                time.sleep(0.5)
                 pyautogui.click()
-                print(f"✅ 找到并点击：{fixed_x}, {fixed_y}")
+                print(f"✅ 点击完成：{fixed_x}, {fixed_y}")
                 return True
             
         print("❌ 未找到目标元素")

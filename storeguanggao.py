@@ -21,7 +21,7 @@ RETINA = is_retina()
 
 # ====================== 【你只需要改这里】 ======================
 # 循环次数（必须 > 0）
-LOOP_TIMES = 2
+LOOP_TIMES = 10
 
 # 是否跳过 icon 查找阶段（True = 跳过，直接开始执行动作）
 SKIP_ICON_FIND = False
@@ -38,11 +38,11 @@ AFTER_WAIT = 0.5
 # ["click", x, y]            → 手动点击坐标
 ACTIONS = [
     ["find", "guanggao.png"],   # 自动找屏幕上的 guanggao.png 并点击
-    ["wait", 31],
+    ["wait", 32],
     ["find", "closed.png"],   # 自动找屏幕上的 closed.png 并点击
-    # ["find_text", "关闭"],       # 根据文本"关闭"查找并点击（需要安装 pyobjc）
+    ["wait", 1],    
     ["find", "get.png"],   # 自动找屏幕上的 get.png 并点击
-    ["wait", 0.5],
+    ["wait", 1],
 ]
 
 # 找图精度（0.8~0.99，越接近1越严格）
@@ -70,8 +70,18 @@ def run_action(act):
     """
     t = act[0]
     if t == "find":
-        # 执行找图动作并返回结果
-        return find_and_click(act[1])
+        image_path = act[1]
+        # 先尝试找图
+        success = find_and_click(image_path)
+        # 如果找 closed.png 失败，尝试找文本"关闭"
+        if not success and image_path == "closed.png":
+            print("📝 closed.png 未找到，尝试查找文本\"关闭\"...")
+            return find_text_and_click("关闭")
+        # 如果找 get.png 失败，尝试找文本"领取"
+        elif not success and image_path == "get.png":
+            print("📝 get.png 未找到，尝试查找文本\"领取\"...")
+            return find_text_and_click("领取")
+        return success
     elif t == "find_text":
         # 执行找文本动作并返回结果
         return find_text_and_click(act[1])
@@ -139,7 +149,8 @@ def run_loop():
                 icon_found = True
                 # 等待小程序启动（增加等待时间）
                 print("等待小程序启动...")
-                time.sleep(5)
+                time.sleep(1)
+                find_and_click("store.png")
                 break
             else:
                 print(f"第 {i+1} 次未找到 icon，重试...")
