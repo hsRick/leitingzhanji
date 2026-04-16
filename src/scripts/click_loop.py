@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # 也添加父目录，确保能够找到 src 模块
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # 再添加项目根目录
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from src.utils.common import run_main_loop
 
@@ -38,6 +38,8 @@ ACTIONS = [
     ["wait", 1],          # 隔 1s
     ["find", "static/images/出击.png"],   # 自动找屏幕上的 出击.png 并点击
     ["wait", 15],         # 等待 15s
+    ["find", "static/images/继续.png"],   # 自动找屏幕上的 65.png 并点击
+    ["wait", 1],          # 隔 1s
 ]
 
 
