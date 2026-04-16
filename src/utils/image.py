@@ -8,8 +8,8 @@
 import os
 import time
 import pyautogui
-from utils.coordinates import fix_coordinates, is_point_in_window
-from utils.window import get_thunder_fighter_window, is_retina
+from src.utils.coordinates import fix_coordinates, is_point_in_window
+from src.utils.window import get_thunder_fighter_window, is_retina
 
 # 检测是否为 Retina 显示器
 RETINA = is_retina()
@@ -120,7 +120,7 @@ def find_text_and_click(text):
         
         # 尝试多次查找
         for i in range(3):
-            from utils.ocr import find_text_ocr
+            from src.utils.ocr import find_text_ocr
             pos = find_text_ocr(text, window)
             if pos:
                 x, y = pos

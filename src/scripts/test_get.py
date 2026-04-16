@@ -7,13 +7,18 @@
 
 import time
 import os
-from utils import find_and_click, get_thunder_fighter_window
+import sys
+
+# 添加项目根目录到 sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.utils import find_and_click, get_thunder_fighter_window
 
 print("🚀 测试 get.png 查找和点击")
 print(f"当前工作目录: {os.getcwd()}")
-print(f"get.png 是否存在: {os.path.exists('get.png')}")
-if os.path.exists('get.png'):
-    print(f"get.png 完整路径: {os.path.abspath('get.png')}")
+print(f"get.png 是否存在: {os.path.exists('static/images/get.png')}")
+if os.path.exists('static/images/get.png'):
+    print(f"get.png 完整路径: {os.path.abspath('static/images/get.png')}")
 
 # 等待 2 秒，让用户准备
 time.sleep(2)
@@ -30,7 +35,7 @@ else:
 
 # 测试 2: 查找并点击 get.png
 print("\n=== 测试 2: 查找并点击 get.png ===")
-success = find_and_click("get.png")
+success = find_and_click("static/images/get.png")
 if success:
     print("✅ get.png 查找和点击成功")
 else:

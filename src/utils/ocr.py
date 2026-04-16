@@ -42,9 +42,12 @@ def find_text_ocr(text, window=None):
         screenshot_region = None  # 标记是全屏截图
         
         # 保存截图用于调试
-        screenshot.save('debug_ocr_screenshot.png')
-        print(f"📸 已保存 OCR 调试截图: debug_ocr_screenshot.png")
+        screenshot.save('static/images/debug_ocr_screenshot.png')
+        print(f"📸 已保存 OCR 调试截图: static/images/debug_ocr_screenshot.png")
         print(f"📸 截图尺寸: {screenshot.size}")
+        
+        # 转换为 RGB 模式（可能提高识别率）
+        screenshot = screenshot.convert('RGB')
         
         # 转换为 PNG 数据
         img_buffer = io.BytesIO()
@@ -66,7 +69,8 @@ def find_text_ocr(text, window=None):
                     bounding_boxes.append(result.boundingBox())
         
         request = VNRecognizeTextRequest.alloc().initWithCompletionHandler_(handle_request)
-        request.setRecognitionLevel_(0)  # 0 = fast, 1 = accurate (快速模式可能更适合中文)
+        request.setRecognitionLevel_(1)  # 1 = accurate (精确模式可能更适合中文)
+        request.setUsesLanguageCorrection_(True)  # 启用语言校正
         
         # 创建图像请求处理器
         handler = VNImageRequestHandler.alloc().initWithData_options_(

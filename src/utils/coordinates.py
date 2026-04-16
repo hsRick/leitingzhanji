@@ -6,7 +6,7 @@
 """
 
 import pyautogui
-from utils.window import is_retina
+from src.utils.window import is_retina
 
 # 检测是否为 Retina 显示器
 RETINA = is_retina()
