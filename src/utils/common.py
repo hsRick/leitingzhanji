@@ -38,7 +38,8 @@ def run_action(act):
         # 先尝试找图
         success = find_and_click(image_path)
         # 如果找 closed.png 失败，等待 3 秒后重试 3 次
-        if not success and image_path == "closed.png":
+        imagename = os.path.basename(image_path)
+        if not success and imagename == "closed.png":
             for i in range(3):
                 print(f"📝 closed.png 未找到，等待 3 秒后第 {i+1} 次重试...")
                 time.sleep(3)

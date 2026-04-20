@@ -37,7 +37,7 @@ ACTIONS = [
     ["find", "static/images/65.png"],   # 自动找屏幕上的 65.png 并点击
     ["wait", 1],          # 隔 1s
     ["find", "static/images/出击.png"],   # 自动找屏幕上的 出击.png 并点击
-    ["wait", 15],         # 等待 15s
+    ["wait", 120],         # 等待 15s
     ["find", "static/images/继续.png"],   # 自动找屏幕上的 65.png 并点击
     ["wait", 1],          # 隔 1s
 ]
