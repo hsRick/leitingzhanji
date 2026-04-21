@@ -57,7 +57,6 @@ if os.path.exists('static/images/icon.png'):
 def post_icon_action():
     find_and_click("static/images/store.png")
 
-
 if __name__ == "__main__":
     try:
         time.sleep(2)
