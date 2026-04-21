@@ -43,6 +43,8 @@ def main():
             powerplus.post_icon_action
         )
         print("=" * 50)
+        #点击首页
+        find_and_click("static/images/首页.png")
         print("✅ 模块 powerplus 运行完成")
     except KeyboardInterrupt:
         print("\n🛑 用户中断")

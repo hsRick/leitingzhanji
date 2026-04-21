@@ -149,6 +149,13 @@ def run_main_loop(loop_times, actions, skip_icon_find=False, post_icon_action=No
     
     # 首先全屏查找 icon 并点击（可选）
     find_icon_and_click(skip_icon_find, post_icon_action)
+
+    # 检查 actions 是否为空
+    if actions is None:
+        print("⚠️ 未提供动作列表，将跳过执行任何操作")
+        return
+    
+    # 执行主循环
     
     # 执行主循环
     for count in range(1, max_loops + 1):
