@@ -41,7 +41,7 @@ def find_and_click(image_path):
             print("未找到微信小程序窗口")
         
         # 尝试多次找图，每次降低置信度
-        confidence_levels = [0.85, 0.75, 0.65, 0.55]
+        confidence_levels = [0.85, 0.75, 0.65]
         
         for attempt, conf in enumerate(confidence_levels):
             print(f"第 {attempt+1} 次尝试，置信度: {conf}")

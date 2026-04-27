@@ -30,13 +30,13 @@ from src.utils import find_and_click
 
 # ====================== 【你只需要改这里】 ======================
 # 循环次数（必须 > 0）
-LOOP_TIMES = 4
+LOOP_TIMES = 30
 
 # 是否跳过 icon 查找阶段（True = 跳过，直接开始执行动作）
 SKIP_ICON_FIND = False
 
 # 扫荡流程中的等待时间（秒）
-SWEEP_WAIT_TIME = 30
+SWEEP_WAIT_TIME = 33
 
 # 闯关模式图片路径
 CHALLENGE_MODE_IMAGE = "static/images/闯关模式.png"
@@ -46,6 +46,7 @@ HERO_DIFFICULTY_IMAGE = "static/images/英雄难度.png"
 QUICK_SWEEP_IMAGE = "static/images/快速扫荡.png"
 # 扫荡图片路径
 SWEEP_IMAGE = "static/images/扫荡.png"
+X_IMAGE = "static/images/扫荡完成.png"
 # 双倍奖励图片路径
 DOUBLE_REWARD_IMAGE = "static/images/双倍奖励.png"
 
@@ -111,9 +112,9 @@ def run_sweep_cycle(cycle_num):
         print("⚠️ 双倍奖励不存在，继续执行")
 
     time.sleep(1)
-    # 4. 点击扫荡
-    print("4. 点击扫荡")
-    find_and_click(SWEEP_IMAGE)
+    # 4. 点击X
+    print("4. X")
+    find_and_click(X_IMAGE)
     time.sleep(1)
 
 

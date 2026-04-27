@@ -32,26 +32,6 @@ def main():
     print("开始运行 powerplus 和 storeguanggao 模块")
     print("=" * 60)
     
-    # 运行 powerplus 模块
-    try:
-        print("\n🚀 正在运行模块: powerplus")
-        print("=" * 50)
-        powerplus.run_main_loop(
-            powerplus.LOOP_TIMES, 
-            powerplus.ACTIONS, 
-            powerplus.SKIP_ICON_FIND, 
-            powerplus.post_icon_action
-        )
-        print("=" * 50)
-        #点击首页
-        find_and_click("static/images/首页.png")
-        print("✅ 模块 powerplus 运行完成")
-    except KeyboardInterrupt:
-        print("\n🛑 用户中断")
-    except Exception as e:
-        print(f"\n❌ 运行模块 powerplus 时出错: {e}")
-        print(traceback.format_exc())
-    
     # 运行 storeguanggao 模块
     try:
         print("\n🚀 正在运行模块: storeguanggao")
@@ -74,6 +54,25 @@ def main():
     print("✅ 所有模块运行完成")
     print("=" * 60)
 
+    # 运行 powerplus 模块
+    try:
+        print("\n🚀 正在运行模块: powerplus")
+        print("=" * 50)
+        powerplus.run_main_loop(
+            powerplus.LOOP_TIMES, 
+            powerplus.ACTIONS, 
+            powerplus.SKIP_ICON_FIND, 
+            powerplus.post_icon_action
+        )
+        print("=" * 50)
+        #点击首页
+        find_and_click("static/images/首页.png")
+        print("✅ 模块 powerplus 运行完成")
+    except KeyboardInterrupt:
+        print("\n🛑 用户中断")
+    except Exception as e:
+        print(f"\n❌ 运行模块 powerplus 时出错: {e}")
+        print(traceback.format_exc())
 
 if __name__ == "__main__":
     try:
